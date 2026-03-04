@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FWIS 211 Simulation</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      font-family: 'Segoe UI', sans-serif;
+      background: #0a0a0a;
+      color: #fff;
+    }
+
+    .header {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      background: rgba(0,0,0,0.95);
+      padding: 10px 20px;
+      border-bottom: 1px solid #333;
+    }
+    .header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+    .title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #4ecdc4;
+    }
+    .tagline {
+      font-size: 12px;
+      color: #888;
+      max-width: 500px;
+      line-height: 1.4;
+    }
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+    }
+    .controls label { color: #aaa; font-size: 11px; }
+    .controls input {
+      background: #222;
+      border: 1px solid #444;
+      border-radius: 4px;
+      color: #fff;
+      padding: 4px 5px;
+      width: 40px;
+      font-size: 11px;
+    }
+    .controls input[type="text"] { width: 50px; }
+    .controls button {
+      background: #4ecdc4;
+      border: none;
+      border-radius: 4px;
+      color: #000;
+      font-weight: 700;
+      padding: 5px 10px;
+      cursor: pointer;
+      font-size: 11px;
+    }
+    .controls button:hover { background: #3dbdb5; }
+    .controls button.secondary { background: #555; color: #fff; }
+    .controls button.matrix-btn { background: #9c27b0; color: #fff; }
+    .controls button.reset { background: #e53935; color: #fff; }
+    .control-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0 12px;
+      border-left: 1px solid #333;
+    }
+    .control-group:first-child { border-left: none; padding-left: 0; }
+
+    .main {
+      position: fixed;
+      top: 85px;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: flex;
+    }
+
+    .stage {
+      flex: 1;
+      position: relative;
+    }
+
+    .step-counter {
+      position: absolute;
+      top: 15px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 14px;
+      color: #666;
+    }
+    .step-counter strong {
+      color: #4ecdc4;
+      font-size: 20px;
+    }
+
+    .panel {
+      width: 420px;
+      background: #111;
+      border-left: 1px solid #333;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      overflow-y: auto;
+    }
+    .panel-section {
+      background: #1a1a1a;
+      border-radius: 6px;
+      padding: 10px;
+    }
+    .panel-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #888;
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .panel-title .iter-badge {
+      background: #2d2d2d;
+      padding: 3px 8px;
+      border-radius: 8px;
+      color: #4ecdc4;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .panel-title .small-btn {
+      background: #4ecdc4;
+      border: none;
+      border-radius: 4px;
+      color: #000;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 4px 8px;
+      cursor: pointer;
+      text-transform: none;
+      letter-spacing: 0;
+    }
+    .panel-title .small-btn:hover { background: #3dbdb5; }
+    .vector-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 4px 0;
+      font-family: 'SF Mono', 'Consolas', monospace;
+      font-size: 13px;
+    }
+    .vector-row .page-label {
+      color: #888;
+      font-weight: 600;
+    }
+    .vector-row .walk-val {
+      color: #4ecdc4;
+      font-weight: 700;
+      transition: all 0.3s ease;
+    }
+    .vector-row .eigen-val {
+      color: #ffb74d;
+      font-weight: 700;
+    }
+    .vector-row .power-val {
+      color: #4ecdc4;
+    }
+
+    .matrix-section {
+      margin-top: 6px;
+    }
+    .matrix-equation {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      justify-content: center;
+      flex-wrap: nowrap;
+    }
+    .matrix-label {
+      font-size: 10px;
+      color: #777;
+      text-align: center;
+      margin-bottom: 4px;
+      font-weight: 600;
+    }
+    .matrix {
+      display: grid;
+      gap: 2px;
+      font-family: 'SF Mono', 'Consolas', monospace;
+      font-size: 11px;
+    }
+    .matrix-cell {
+      padding: 4px 5px;
+      text-align: center;
+      background: #2a2a2a;
+      border-radius: 3px;
+      min-width: 36px;
+      color: #ccc;
+      transition: all 0.15s;
+    }
+    .matrix-cell.highlight-row { background: #1565c0; color: #fff; }
+    .matrix-cell.highlight-col { background: #7b1fa2; color: #fff; }
+    .matrix-cell.active { 
+      background: #e91e63; 
+      color: #fff; 
+      transform: scale(1.15);
+      box-shadow: 0 0 15px rgba(233, 30, 99, 0.6);
+    }
+    .matrix-cell.ripple {
+      animation: cellRipple 0.4s ease-out;
+    }
+    @keyframes cellRipple {
+      0% { transform: scale(1); box-shadow: 0 0 0 rgba(233, 30, 99, 0); }
+      50% { transform: scale(1.2); box-shadow: 0 0 20px rgba(233, 30, 99, 0.8); }
+      100% { transform: scale(1); box-shadow: 0 0 0 rgba(233, 30, 99, 0); }
+    }
+
+    .vector-col {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      font-family: 'SF Mono', 'Consolas', monospace;
+      font-size: 12px;
+    }
+    .vec-cell {
+      padding: 4px 8px;
+      background: #2a2a2a;
+      border-radius: 3px;
+      text-align: center;
+      color: #ccc;
+      transition: all 0.15s;
+    }
+    .vec-cell.highlight { background: #7b1fa2; color: #fff; }
+    .vec-cell.result { background: #00897b; color: #fff; font-weight: 700; }
+    .vec-cell.editable {
+      background: #1a1a1a;
+      border: 1px solid #444;
+      cursor: pointer;
+    }
+    .vec-cell.editable:hover { border-color: #4ecdc4; }
+    .vec-cell input {
+      width: 50px;
+      background: transparent;
+      border: none;
+      color: #4ecdc4;
+      text-align: center;
+      font-family: inherit;
+      font-size: inherit;
+      font-weight: 600;
+    }
+
+    .math-symbol { color: #555; font-size: 16px; font-weight: bold; }
+    .bracket { color: #444; font-size: 40px; font-weight: 100; line-height: 0.9; }
+
+    .computation-log {
+      background: #222;
+      border-radius: 4px;
+      padding: 8px;
+      margin-top: 8px;
+      font-family: 'SF Mono', 'Consolas', monospace;
+      font-size: 11px;
+      line-height: 1.5;
+      min-height: 40px;
+      max-height: 60px;
+      overflow-y: auto;
+      color: #bbb;
+    }
+    .computation-log .term { color: #ffb74d; }
+    .computation-log .result { color: #e91e63; }
+    .computation-log .sum { color: #4ecdc4; font-weight: 700; }
+
+    .page-node {
+      position: absolute;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      transform: translate(-50%, -50%);
+    }
+    .page-pct {
+      font-size: 28px;
+      font-weight: 900;
+      margin-bottom: 3px;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+      transition: all 0.3s ease;
+    }
+    .page-pct.updating {
+      transform: scale(1.1);
+      color: #4ecdc4;
+    }
+    .page-card {
+      width: 70px;
+      height: 55px;
+      background: linear-gradient(145deg, #ffffff, #e6e6e6);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 26px;
+      font-weight: 800;
+      color: #111;
+      box-shadow: 0 8px 25px rgba(0,0,0,0.4);
+      transition: all 0.3s ease;
+    }
+    .page-card.current { 
+      box-shadow: 0 0 15px rgba(78, 205, 196, 0.5), 0 0 25px rgba(78, 205, 196, 0.2);
+      transform: scale(1.03);
+    }
+
+    .robot {
+      position: absolute;
+      width: 40px;
+      height: 55px;
+      pointer-events: none;
+      z-index: 50;
+    }
+    .robot-head {
+      width: 32px;
+      height: 26px;
+      background: linear-gradient(180deg, #b3e5fc, #4fc3f7);
+      border-radius: 10px;
+      margin: 0 auto;
+      position: relative;
+    }
+    .robot-eye {
+      position: absolute;
+      width: 6px;
+      height: 8px;
+      background: #1a237e;
+      border-radius: 50%;
+      top: 8px;
+    }
+    .robot-eye.l { left: 6px; }
+    .robot-eye.r { right: 6px; }
+    .robot-body {
+      width: 26px;
+      height: 20px;
+      background: linear-gradient(180deg, #81d4fa, #29b6f6);
+      border-radius: 5px;
+      margin: 2px auto;
+    }
+    .robot-legs {
+      display: flex;
+      justify-content: center;
+      gap: 5px;
+    }
+    .robot-leg {
+      width: 8px;
+      height: 11px;
+      background: #0288d1;
+      border-radius: 2px;
+    }
+
+    svg.arrows {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      pointer-events: none;
+    }
+    .arrow { 
+      stroke: #2196f3;
+      stroke-width: 2.5; 
+      fill: none; 
+      opacity: 0.7;
+      stroke-dasharray: 8 4;
+      animation: flowDash 1s linear infinite;
+    }
+    @keyframes flowDash {
+      0% { stroke-dashoffset: 12; }
+      100% { stroke-dashoffset: 0; }
+    }
+    .arrow.highlight {
+      stroke: #ff9800;
+      stroke-width: 3;
+      opacity: 1;
+      filter: drop-shadow(0 0 6px rgba(255, 152, 0, 0.7));
+    }
+    .arrow-head { fill: #2196f3; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="header-top">
+      <div class="title">FWIS 211 Simulation</div>
+      <div class="tagline">
+        A link from an important page is worth more than many links from unimportant pages.
+      </div>
+    </div>
+    <div class="controls">
+      <div class="control-group">
+        <label>Pages:</label>
+        <input type="number" id="nPages" value="4" min="2" max="6" />
+        <div id="linkInputs"></div>
+      </div>
+      <div class="control-group">
+        <label>Damping:</label>
+        <input type="number" id="damping" value="0.85" min="0" max="1" step="0.05" style="width:55px;" />
+      </div>
+      <div class="control-group">
+        <button id="stepBtn">Step</button>
+        <button id="runBtn">Run</button>
+        <button id="stopBtn" class="secondary">Stop</button>
+        <button id="x10000Btn">×10k</button>
+      </div>
+      <div class="control-group">
+        <button id="matrixStepBtn" class="matrix-btn">G×v Step</button>
+        <button id="matrix50Btn" class="matrix-btn">G×v ×50</button>
+      </div>
+      <div class="control-group">
+        <button id="resetBtn" class="reset">Reset</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="stage" id="stage">
+      <div class="step-counter">
+        Steps: <strong id="stepCount">0</strong>
+      </div>
+      <svg class="arrows" id="arrows">
+        <defs>
+          <marker id="ah" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+            <polygon points="0,0 8,4 0,8" class="arrow-head"/>
+          </marker>
+        </defs>
+      </svg>
+      <div class="robot" id="robot">
+        <div class="robot-head">
+          <div class="robot-eye l"></div>
+          <div class="robot-eye r"></div>
+        </div>
+        <div class="robot-body"></div>
+        <div class="robot-legs">
+          <div class="robot-leg"></div>
+          <div class="robot-leg"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-section">
+        <div class="panel-title">Walk Distribution</div>
+        <div id="walkVector"></div>
+      </div>
+
+      <div class="panel-section">
+        <div class="panel-title">
+          Power Iteration: G × v
+          <span class="iter-badge" id="matrixIterBadge">0 iters</span>
+        </div>
+        <div class="matrix-equation">
+          <div>
+            <div class="matrix-label">G</div>
+            <div style="display:flex;align-items:center;">
+              <span class="bracket">[</span>
+              <div class="matrix" id="matrixG"></div>
+              <span class="bracket">]</span>
+            </div>
+          </div>
+          <span class="math-symbol">×</span>
+          <div>
+            <div class="matrix-label">v (editable)</div>
+            <div class="vector-col" id="vecV"></div>
+          </div>
+          <span class="math-symbol">=</span>
+          <div>
+            <div class="matrix-label">v'</div>
+            <div class="vector-col" id="vecResult"></div>
+          </div>
+        </div>
+        <div class="computation-log" id="computeLog">
+          Edit v values above, then click "G×v Step" to see multiplication.
+        </div>
+      </div>
+
+      <div class="panel-section">
+        <div class="panel-title">Principal Eigenvector <button id="pasteEigenBtn" class="small-btn">Paste as v</button></div>
+        <div id="eigenVector"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const stage = document.getElementById('stage');
+    const arrows = document.getElementById('arrows');
+    const robot = document.getElementById('robot');
+
+    let n = 4;
+    let adj = [];
+    let G = [];
+    let nodes = [];
+    let visits = [];
+    let totalSteps = 0;
+    let currentPage = 0;
+    let running = false;
+    let matrixRunning = false;
+    let arrowElements = [];
+
+    let vecV = [];
+    let vecResult = [];
+    let matrixIters = 0;
+
+    const defaultLinks = {
+      2: ['2', '1'],
+      3: ['2,3', '1', '1'],
+      4: ['2', '1', '1', '1'],
+      5: ['2,3', '1', '1', '5,6', '4,6'],
+      6: ['2,3', '1', '1', '5,6', '4,6', '']
+    };
+
+    function init() {
+      n = Math.max(2, Math.min(6, parseInt(document.getElementById('nPages').value) || 4));
+      document.getElementById('nPages').value = n;
+
+      const linkDiv = document.getElementById('linkInputs');
+      const existing = {};
+      linkDiv.querySelectorAll('input').forEach((inp, i) => { existing[i] = inp.value; });
+      linkDiv.innerHTML = '';
+      const defs = defaultLinks[n] || [];
+      for (let i = 0; i < n; i++) {
+        const lbl = document.createElement('label');
+        lbl.textContent = `P${i+1}→`;
+        lbl.style.marginLeft = '5px';
+        const inp = document.createElement('input');
+        inp.type = 'text';
+        inp.value = existing[i] !== undefined ? existing[i] : (defs[i] || '');
+        inp.addEventListener('input', rebuild);
+        linkDiv.appendChild(lbl);
+        linkDiv.appendChild(inp);
+      }
+
+      rebuild();
+    }
+
+    function rebuild() {
+      stop();
+      stopMatrix();
+      n = parseInt(document.getElementById('nPages').value);
+      const dVal = parseFloat(document.getElementById('damping').value);
+      const d = isNaN(dVal) ? 0.85 : dVal;
+
+      adj = [];
+      const inputs = document.getElementById('linkInputs').querySelectorAll('input');
+      for (let i = 0; i < n; i++) {
+        const links = [];
+        if (inputs[i]) {
+          inputs[i].value.split(',').forEach(s => {
+            const num = parseInt(s.trim());
+            if (num >= 1 && num <= n && !links.includes(num - 1)) links.push(num - 1);
+          });
+        }
+        adj.push(links);
+      }
+
+      G = [];
+      for (let i = 0; i < n; i++) G.push(new Array(n).fill(0));
+      for (let j = 0; j < n; j++) {
+        if (adj[j].length === 0) {
+          for (let i = 0; i < n; i++) G[i][j] = 1/n;
+        } else {
+          for (const i of adj[j]) G[i][j] = 1 / adj[j].length;
+        }
+      }
+      for (let i = 0; i < n; i++) {
+        for (let j = 0; j < n; j++) {
+          G[i][j] = d * G[i][j] + (1 - d) / n;
+        }
+      }
+
+      stage.querySelectorAll('.page-node').forEach(el => el.remove());
+      arrows.querySelectorAll('.arrow').forEach(el => el.remove());
+      arrowElements = [];
+
+      const rect = stage.getBoundingClientRect();
+      const cx = rect.width / 2, cy = rect.height / 2 + 15;
+      const r = Math.min(rect.width, rect.height) * 0.32;
+
+      nodes = [];
+      for (let i = 0; i < n; i++) {
+        const angle = -Math.PI/2 + (2 * Math.PI * i) / n;
+        nodes.push({ x: cx + r * Math.cos(angle), y: cy + r * Math.sin(angle) });
+      }
+
+      for (let from = 0; from < n; from++) {
+        for (const to of adj[from]) {
+          drawArrow(nodes[from], nodes[to], from, to);
+        }
+      }
+
+      for (let i = 0; i < n; i++) {
+        const div = document.createElement('div');
+        div.className = 'page-node';
+        div.id = `page-${i}`;
+        div.style.left = nodes[i].x + 'px';
+        div.style.top = nodes[i].y + 'px';
+        div.innerHTML = `
+          <div class="page-pct" id="pct-${i}">—</div>
+          <div class="page-card">${i + 1}</div>
+        `;
+        stage.appendChild(div);
+      }
+
+      visits = new Array(n).fill(0);
+      totalSteps = 0;
+      currentPage = 0;
+
+      vecV = new Array(n).fill(1/n);
+      vecResult = new Array(n).fill(0);
+      matrixIters = 0;
+
+      positionRobot(currentPage);
+      renderMatrix();
+      renderVecV();
+      renderVecResult();
+      updateDisplay();
+    }
+
+    function drawArrow(from, to, fromIdx, toIdx) {
+      const dx = to.x - from.x, dy = to.y - from.y;
+      const dist = Math.hypot(dx, dy);
+      if (dist === 0) return;
+      const nx = dx/dist, ny = dy/dist;
+      const x1 = from.x + nx*45, y1 = from.y + ny*45;
+      const x2 = to.x - nx*55, y2 = to.y - ny*55;
+      const mx = (x1+x2)/2 - ny*15, my = (y1+y2)/2 + nx*15;
+
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttribute('d', `M${x1},${y1} Q${mx},${my} ${x2},${y2}`);
+      path.setAttribute('class', 'arrow');
+      path.setAttribute('marker-end', 'url(#ah)');
+      path.dataset.from = fromIdx;
+      path.dataset.to = toIdx;
+      arrows.appendChild(path);
+      arrowElements.push({ path, fromIdx, toIdx });
+    }
+
+    function highlightArrow(fromIdx, toIdx) {
+      arrowElements.forEach(({ path, fromIdx: f, toIdx: t }) => {
+        if (f === fromIdx && t === toIdx) {
+          path.classList.add('highlight');
+        } else {
+          path.classList.remove('highlight');
+        }
+      });
+    }
+
+    function clearArrowHighlights() {
+      arrowElements.forEach(({ path }) => path.classList.remove('highlight'));
+    }
+
+    function positionRobot(i) {
+      if (!nodes[i]) return;
+      robot.style.left = (nodes[i].x - 20) + 'px';
+      robot.style.top = (nodes[i].y - 75) + 'px';
+      document.querySelectorAll('.page-card').forEach((c, idx) => {
+        c.classList.toggle('current', idx === i);
+      });
+    }
+
+    function computeEigenvector() {
+      let v = new Array(n).fill(1/n);
+      for (let iter = 0; iter < 100; iter++) {
+        const nv = new Array(n).fill(0);
+        for (let i = 0; i < n; i++) {
+          for (let j = 0; j < n; j++) {
+            nv[i] += G[i][j] * v[j];
+          }
+        }
+        v = nv;
+      }
+      return v;
+    }
+
+    function renderMatrix(highlightRow = -1, highlightCol = -1, activeCell = null) {
+      const grid = document.getElementById('matrixG');
+      grid.style.gridTemplateColumns = `repeat(${n}, 1fr)`;
+      let html = '';
+      for (let i = 0; i < n; i++) {
+        for (let j = 0; j < n; j++) {
+          let cls = 'matrix-cell';
+          if (activeCell && activeCell.row === i && activeCell.col === j) cls += ' active ripple';
+          else if (i === highlightRow) cls += ' highlight-row';
+          else if (j === highlightCol) cls += ' highlight-col';
+          html += `<div class="${cls}">${G[i][j].toFixed(3)}</div>`;
+        }
+      }
+      grid.innerHTML = html;
+    }
+
+    function renderVecV(highlightIdx = -1) {
+      let html = '';
+      for (let i = 0; i < n; i++) {
+        const cls = i === highlightIdx ? 'vec-cell highlight' : 'vec-cell editable';
+        html += `<div class="${cls}">
+          <input type="number" step="0.01" value="${vecV[i].toFixed(3)}" data-idx="${i}" />
+        </div>`;
+      }
+      document.getElementById('vecV').innerHTML = html;
+      
+      document.querySelectorAll('#vecV input').forEach(inp => {
+        inp.addEventListener('change', (e) => {
+          const idx = parseInt(e.target.dataset.idx);
+          vecV[idx] = parseFloat(e.target.value) || 0;
+        });
+      });
+    }
+
+    function renderVecResult(highlightIdx = -1) {
+      let html = '';
+      for (let i = 0; i < n; i++) {
+        const cls = i === highlightIdx ? 'vec-cell result' : 'vec-cell';
+        html += `<div class="${cls}">${vecResult[i].toFixed(3)}</div>`;
+      }
+      document.getElementById('vecResult').innerHTML = html;
+    }
+
+    function animatePercentage(element, newValue) {
+      element.classList.add('updating');
+      element.textContent = newValue;
+      setTimeout(() => element.classList.remove('updating'), 300);
+    }
+
+    function updateDisplay() {
+      document.getElementById('stepCount').textContent = totalSteps.toLocaleString();
+      document.getElementById('matrixIterBadge').textContent = matrixIters + ' iters';
+      
+      const eigen = computeEigenvector();
+      
+      for (let i = 0; i < n; i++) {
+        const pctEl = document.getElementById(`pct-${i}`);
+        const pct = totalSteps > 0 ? ((visits[i] / totalSteps) * 100).toFixed(1) + '%' : '—';
+        if (pctEl.textContent !== pct) {
+          animatePercentage(pctEl, pct);
+        }
+      }
+
+      let walkHtml = '';
+      for (let i = 0; i < n; i++) {
+        const walkVal = totalSteps > 0 ? (visits[i] / totalSteps).toFixed(3) : '—';
+        walkHtml += `<div class="vector-row">
+          <span class="page-label">P${i+1}</span>
+          <span class="walk-val">${walkVal}</span>
+        </div>`;
+      }
+      document.getElementById('walkVector').innerHTML = walkHtml;
+
+      let eigenHtml = '';
+      for (let i = 0; i < n; i++) {
+        eigenHtml += `<div class="vector-row">
+          <span class="page-label">P${i+1}</span>
+          <span class="eigen-val">${eigen[i].toFixed(3)}</span>
+        </div>`;
+      }
+      document.getElementById('eigenVector').innerHTML = eigenHtml;
+    }
+
+    function pickNext(from) {
+      const dVal = parseFloat(document.getElementById('damping').value);
+      const d = isNaN(dVal) ? 0.85 : dVal;
+      if (Math.random() > d) return Math.floor(Math.random() * n);
+      if (adj[from].length === 0) return Math.floor(Math.random() * n);
+      return adj[from][Math.floor(Math.random() * adj[from].length)];
+    }
+
+    async function step() {
+      const from = currentPage;
+      const to = pickNext(from);
+      
+      highlightArrow(from, to);
+      
+      await animateRobot(from, to);
+      
+      clearArrowHighlights();
+      currentPage = to;
+      visits[to]++;
+      totalSteps++;
+      positionRobot(currentPage);
+      updateDisplay();
+    }
+
+    function animateRobot(from, to) {
+      return new Promise(resolve => {
+        if (!nodes[from] || !nodes[to]) { resolve(); return; }
+        const f = nodes[from], t = nodes[to];
+        const sx = f.x - 20, sy = f.y - 75;
+        const ex = t.x - 20, ey = t.y - 75;
+        const dur = 400;
+        const start = performance.now();
+
+        function tick(now) {
+          const p = Math.min((now - start) / dur, 1);
+          const ease = p < 0.5 ? 2*p*p : 1 - Math.pow(-2*p + 2, 2) / 2;
+          robot.style.left = (sx + (ex - sx) * ease) + 'px';
+          robot.style.top = (sy + (ey - sy) * ease) + 'px';
+          if (p < 1) requestAnimationFrame(tick);
+          else resolve();
+        }
+        requestAnimationFrame(tick);
+      });
+    }
+
+    async function run() {
+      if (running) return;
+      running = true;
+      while (running) {
+        await step();
+        await new Promise(r => setTimeout(r, 250));
+      }
+    }
+
+    function stop() { running = false; }
+    function stopMatrix() { matrixRunning = false; }
+
+    async function fast10000() {
+      stop();
+      const batchSize = 200;
+      const totalBatches = 50;
+      
+      for (let batch = 0; batch < totalBatches; batch++) {
+        for (let i = 0; i < batchSize; i++) {
+          const to = pickNext(currentPage);
+          currentPage = to;
+          visits[to]++;
+          totalSteps++;
+        }
+        positionRobot(currentPage);
+        updateDisplay();
+        await new Promise(r => setTimeout(r, 25));
+      }
+    }
+
+    async function matrixStep() {
+      stopMatrix();
+      const log = document.getElementById('computeLog');
+      const newResult = new Array(n).fill(0);
+
+      for (let i = 0; i < n; i++) {
+        renderMatrix(i, -1);
+        renderVecV();
+        
+        let terms = [];
+        let sum = 0;
+        for (let j = 0; j < n; j++) {
+          renderMatrix(i, j, {row: i, col: j});
+          renderVecV(j);
+          
+          const product = G[i][j] * vecV[j];
+          sum += product;
+          terms.push(`<span class="term">${G[i][j].toFixed(2)}×${vecV[j].toFixed(2)}</span>`);
+          
+          await new Promise(r => setTimeout(r, 80));
+        }
+        newResult[i] = sum;
+        
+        log.innerHTML = `Row ${i+1}: ${terms.join(' + ')}<br>= <span class="sum">${sum.toFixed(4)}</span>`;
+        
+        renderVecResult(i);
+        vecResult = [...newResult];
+        renderVecResult(i);
+        
+        await new Promise(r => setTimeout(r, 150));
+      }
+
+      vecV = [...newResult];
+      vecResult = [...newResult];
+      matrixIters++;
+      
+      renderMatrix();
+      renderVecV();
+      renderVecResult();
+      updateDisplay();
+      
+      log.innerHTML = `Iteration ${matrixIters} complete. v updated to v'.`;
+    }
+
+    async function matrix50() {
+      stopMatrix();
+      const log = document.getElementById('computeLog');
+      
+      for (let iter = 0; iter < 50; iter++) {
+        const newResult = new Array(n).fill(0);
+        for (let i = 0; i < n; i++) {
+          for (let j = 0; j < n; j++) {
+            newResult[i] += G[i][j] * vecV[j];
+          }
+        }
+        vecV = [...newResult];
+        vecResult = [...newResult];
+        matrixIters++;
+        
+        if (iter % 5 === 0 || iter === 49) {
+          renderVecV();
+          renderVecResult();
+          updateDisplay();
+          log.innerHTML = `Iteration ${matrixIters}...`;
+          await new Promise(r => setTimeout(r, 30));
+        }
+      }
+      
+      renderMatrix();
+      renderVecV();
+      renderVecResult();
+      updateDisplay();
+      log.innerHTML = `Completed 50 iterations. Total: ${matrixIters} iters.`;
+    }
+
+    document.getElementById('nPages').addEventListener('change', init);
+    document.getElementById('damping').addEventListener('change', rebuild);
+    document.getElementById('damping').addEventListener('input', rebuild);
+    document.getElementById('stepBtn').addEventListener('click', () => { stop(); step(); });
+    document.getElementById('runBtn').addEventListener('click', run);
+    document.getElementById('stopBtn').addEventListener('click', stop);
+    document.getElementById('x10000Btn').addEventListener('click', fast10000);
+    document.getElementById('matrixStepBtn').addEventListener('click', matrixStep);
+    document.getElementById('matrix50Btn').addEventListener('click', matrix50);
+    document.getElementById('resetBtn').addEventListener('click', rebuild);
+    document.getElementById('pasteEigenBtn').addEventListener('click', () => {
+      const eigen = computeEigenvector();
+      vecV = [...eigen];
+      renderVecV();
+    });
+
+    init();
+  </script>
+</body>
+</html>
